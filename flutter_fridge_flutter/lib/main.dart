@@ -19,8 +19,12 @@ class MyApp extends StatelessWidget {
       title: 'Serverpod Demo',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
+          primarySwatch: Colors.blue,
+          useMaterial3: true,
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: Colors.blueGrey,
+            brightness: Brightness.light,
+          )),
       home: const FridgeContainer(),
     );
   }
