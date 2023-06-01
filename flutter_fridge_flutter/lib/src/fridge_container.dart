@@ -3,6 +3,18 @@ import 'package:flutter_fridge_client/flutter_fridge_client.dart';
 import 'package:flutter_fridge_flutter/main.dart';
 import 'package:flutter_fridge_flutter/src/utils.dart';
 
+const List<String> colors = [
+  "#000000",
+  "#00008B",
+  "#800000",
+  "#556B2F",
+  "#4B0082",
+  "#E7691D",
+];
+
+const MIN_X = 8;
+const MIN_Y = 64;
+
 class FridgeContainer extends StatefulWidget {
   const FridgeContainer({super.key});
 
@@ -75,143 +87,102 @@ class _FridgeContainerState extends State<FridgeContainer> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Fridge"),
-        actions: [
-          TextButton(
-            onPressed: () {},
-            child: Text(
-              "$connectionsCount User${connectionsCount == 1 ? '' : 's'}",
-              style: const TextStyle(
-                color: Colors.white,
-              ),
-            ),
-          )
-        ],
-      ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          final message = MagnetCreateMessage(
-            x: 0,
-            y: 0,
-            text: "Test",
-            color: "#ffff00",
-          );
+        onPressed: () async {
+          final MagnetCreateMessage? message = await showModalBottomSheet(
+              backgroundColor: Colors.white,
+              context: context,
+              builder: (context) {
+                return const CreateMessageModal();
+              }) as MagnetCreateMessage?;
 
-          client.fridge.sendStreamMessage(message);
+          if (message != null && message.text.isNotEmpty) {
+            client.fridge.sendStreamMessage(message);
+          }
         },
         child: const Icon(Icons.add),
       ),
       body: Container(
         width: double.infinity,
         height: double.infinity,
-        color: Colors.black45,
+        decoration: const BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage('assets/background.png'),
+            fit: BoxFit.cover,
+          ),
+        ),
         child: Stack(
           key: _key,
-          children: magnets.map(
-            (m) {
-              return AnimatedPositioned(
-                duration: Duration(milliseconds: animationDurationMs),
-                key: Key(m.identifier),
-                left: m.x.toDouble(),
-                top: m.y.toDouble(),
-                child: Draggable(
-                  feedback: Opacity(opacity: 0.5, child: MagnetContainer(m)),
-                  childWhenDragging: Container(),
-                  onDragStarted: () {
-                    setState(() {
-                      animationDurationMs = 0;
-                    });
-                  },
-                  onDragEnd: (dragDetails) {
-                    final RenderBox? box = _key.currentContext?.findRenderObject() as RenderBox?;
-                    final Offset? position = box?.localToGlobal(Offset.zero);
-
-                    if (position != null) {
-                      final x = dragDetails.offset.dx - position.dx;
-                      final y = dragDetails.offset.dy - position.dy;
-
-                      final message = MagnetUpdateMessage(
-                        identifier: m.identifier,
-                        x: x.round(),
-                        y: y.round(),
-                      );
-
-                      client.fridge.sendStreamMessage(message);
-
-                      Future.delayed(const Duration(milliseconds: 300)).then((_) {
-                        setState(() {
-                          animationDurationMs = 300;
-                        });
+          children: [
+            ...magnets.map(
+              (m) {
+                return AnimatedPositioned(
+                  duration: Duration(milliseconds: animationDurationMs),
+                  key: Key(m.identifier),
+                  left: m.x.toDouble(),
+                  top: m.y.toDouble(),
+                  child: Draggable(
+                    feedback: Opacity(opacity: 0.5, child: MagnetContainer(m)),
+                    childWhenDragging: Container(),
+                    onDragStarted: () {
+                      setState(() {
+                        animationDurationMs = 0;
                       });
-                    }
-                  },
-                  child: MagnetContainer(m),
-                ),
-              );
-            },
-          ).toList(),
-        ),
-        Scaffold(
-          backgroundColor: Colors.transparent,
-          appBar: AppBar(
-            title: const Text("Fridge"),
-          ),
-          floatingActionButton: FloatingActionButton(
-            onPressed: () async {
-              final MagnetCreateMessage? message = await showModalBottomSheet(
-                  backgroundColor: Colors.white,
-                  context: context,
-                  builder: (context) {
-                    return CreateMessageModal();
-                  }) as MagnetCreateMessage?;
+                    },
+                    onDragEnd: (dragDetails) {
+                      final RenderBox? box = _key.currentContext?.findRenderObject() as RenderBox?;
+                      final Offset? position = box?.localToGlobal(Offset.zero);
 
-              if (message != null && message.text.isNotEmpty) {
-                client.fridge.sendStreamMessage(message);
-              }
-            },
-            child: const Icon(Icons.add),
-          ),
-          body: Container(
-            width: double.infinity,
-            height: double.infinity,
-            color: Colors.black45,
-            child: Stack(
-              key: _key,
-              children: magnets.map(
-                (m) {
-                  return Positioned(
-                    left: m.x.toDouble(),
-                    top: m.y.toDouble(),
-                    child: Draggable(
-                      feedback: Opacity(opacity: 0.5, child: MagnetContainer(m)),
-                      childWhenDragging: Container(),
-                      onDragEnd: (dragDetails) {
-                        final RenderBox? box = _key.currentContext?.findRenderObject() as RenderBox?;
-                        final Offset? position = box?.localToGlobal(Offset.zero);
+                      if (position != null) {
+                        final x = dragDetails.offset.dx - position.dx;
+                        final y = dragDetails.offset.dy - position.dy;
 
-                        if (position != null) {
-                          final x = dragDetails.offset.dx - position.dx;
-                          final y = dragDetails.offset.dy - position.dy;
+                        final message = MagnetUpdateMessage(
+                          identifier: m.identifier,
+                          x: x.round(),
+                          y: y.round(),
+                        );
 
-                          final message = MagnetUpdateMessage(
-                            identifier: m.identifier,
-                            x: x.round(),
-                            y: y.round(),
-                          );
+                        client.fridge.sendStreamMessage(message);
 
-                          client.fridge.sendStreamMessage(message);
-                        }
-                      },
-                      child: MagnetContainer(m),
+                        Future.delayed(const Duration(milliseconds: 300)).then((_) {
+                          setState(() {
+                            animationDurationMs = 300;
+                          });
+                        });
+                      }
+                    },
+                    child: MagnetContainer(m),
+                  ),
+                );
+              },
+            ).toList(),
+            Align(
+              alignment: Alignment.topRight,
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 24.0),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.black,
+                      borderRadius: BorderRadius.circular(4.0),
                     ),
-                  );
-                },
-              ).toList(),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 3.0, horizontal: 6.0),
+                      child: Text(
+                        "$connectionsCount User${connectionsCount == 1 ? '' : 's'}",
+                        style: const TextStyle(
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ),
-          ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }
@@ -226,7 +197,6 @@ class CreateMessageModal extends StatefulWidget {
 }
 
 class _CreateMessageModalState extends State<CreateMessageModal> {
-  List<String> colors = ["#000000", "#00008B", "#800000", "#556B2F", "#4B0082", "#FFA500"];
   String selectedColor = "#000000";
   TextEditingController messageController = TextEditingController();
   @override
@@ -237,19 +207,22 @@ class _CreateMessageModalState extends State<CreateMessageModal> {
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.start,
         children: [
-          Text(
-            'New Magnet',
-            style: Theme.of(context).textTheme.headlineMedium!.copyWith(fontWeight: FontWeight.w400),
+          const Text(
+            'Add Magnet',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: TextField(
               autofocus: true,
-              decoration: InputDecoration(hintText: 'Message'),
+              decoration: const InputDecoration(hintText: 'Message'),
               onSubmitted: (val) {
                 Navigator.of(context).pop(MagnetCreateMessage(
-                  x: 0,
-                  y: 0,
+                  x: MIN_X,
+                  y: MIN_Y,
                   text: val,
                   color: selectedColor,
                 ));
@@ -257,9 +230,18 @@ class _CreateMessageModalState extends State<CreateMessageModal> {
               controller: messageController,
             ),
           ),
-          Text(
-            'Color',
-            style: Theme.of(context).textTheme.headlineSmall,
+          const Align(
+            alignment: Alignment.centerLeft,
+            child: Padding(
+              padding: EdgeInsets.all(8.0),
+              child: Text(
+                'Color',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
           ),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -286,18 +268,25 @@ class _CreateMessageModalState extends State<CreateMessageModal> {
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
               TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop(MagnetCreateMessage(
-                      x: 0,
-                      y: 0,
+                onPressed: () {
+                  Navigator.of(context).pop(
+                    MagnetCreateMessage(
+                      x: MIN_X,
+                      y: MIN_Y,
                       text: messageController.text,
                       color: selectedColor,
-                    ));
-                  },
-                  child: Text(
-                    'Create',
-                    style: TextStyle(fontSize: 20, color: hexToColor(selectedColor)),
-                  )),
+                    ),
+                  );
+                },
+                child: Text(
+                  'Add',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: hexToColor(selectedColor),
+                  ),
+                ),
+              ),
             ],
           ),
         ],
@@ -320,9 +309,9 @@ class MagnetContainer extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(3),
           boxShadow: const [
-            BoxShadow(spreadRadius: 3, blurRadius: 5, color: Colors.black12),
+            BoxShadow(offset: Offset(3, 3), spreadRadius: 0, blurRadius: 0, color: Colors.black12),
           ],
         ),
         child: Padding(
