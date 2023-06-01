@@ -15,6 +15,8 @@ class _FridgeContainerState extends State<FridgeContainer> {
   final GlobalKey _key = GlobalKey();
 
   List<Magnet> magnets = [];
+  int connectionsCount = 0;
+  int animationDurationMs = 300;
 
   @override
   void initState() {
@@ -33,6 +35,12 @@ class _FridgeContainerState extends State<FridgeContainer> {
 
   Future<void> listenForUpdates() async {
     await for (var message in client.fridge.stream) {
+      if (message is ConnectionChangeMessage) {
+        setState(() {
+          connectionsCount = message.count;
+        });
+      }
+
       if (message is MagnetStateMessage) {
         setState(() {
           magnets = message.magnets;
@@ -69,6 +77,17 @@ class _FridgeContainerState extends State<FridgeContainer> {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Fridge"),
+        actions: [
+          TextButton(
+            onPressed: () {},
+            child: Text(
+              "$connectionsCount User${connectionsCount == 1 ? '' : 's'}",
+              style: const TextStyle(
+                color: Colors.white,
+              ),
+            ),
+          )
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
@@ -91,12 +110,19 @@ class _FridgeContainerState extends State<FridgeContainer> {
           key: _key,
           children: magnets.map(
             (m) {
-              return Positioned(
+              return AnimatedPositioned(
+                duration: Duration(milliseconds: animationDurationMs),
+                key: Key(m.identifier),
                 left: m.x.toDouble(),
                 top: m.y.toDouble(),
                 child: Draggable(
                   feedback: Opacity(opacity: 0.5, child: MagnetContainer(m)),
                   childWhenDragging: Container(),
+                  onDragStarted: () {
+                    setState(() {
+                      animationDurationMs = 0;
+                    });
+                  },
                   onDragEnd: (dragDetails) {
                     final RenderBox? box = _key.currentContext?.findRenderObject() as RenderBox?;
                     final Offset? position = box?.localToGlobal(Offset.zero);
@@ -112,6 +138,12 @@ class _FridgeContainerState extends State<FridgeContainer> {
                       );
 
                       client.fridge.sendStreamMessage(message);
+
+                      Future.delayed(const Duration(milliseconds: 300)).then((_) {
+                        setState(() {
+                          animationDurationMs = 300;
+                        });
+                      });
                     }
                   },
                   child: MagnetContainer(m),

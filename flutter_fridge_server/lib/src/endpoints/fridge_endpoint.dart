@@ -4,6 +4,8 @@ import 'package:serverpod/serverpod.dart';
 
 const magnetChannel = "magnet-channel";
 
+int connectionsCount = 0;
+
 class FridgeEndpoint extends Endpoint {
   Future<void> _addMagnetToDatabase(Session session, Magnet magnet) async {
     await Magnet.insert(session, magnet);
@@ -11,6 +13,11 @@ class FridgeEndpoint extends Endpoint {
 
   @override
   Future<void> streamOpened(StreamingSession session) async {
+    connectionsCount += 1;
+
+    sendStreamMessage(session, ConnectionChangeMessage(count: connectionsCount));
+    session.messages.postMessage(magnetChannel, ConnectionChangeMessage(count: connectionsCount), global: false);
+
     final magnets = await Magnet.find(session);
 
     sendStreamMessage(session, MagnetStateMessage(magnets: magnets));
@@ -18,6 +25,13 @@ class FridgeEndpoint extends Endpoint {
     session.messages.addListener(magnetChannel, (update) {
       sendStreamMessage(session, update);
     });
+  }
+
+  @override
+  Future<void> streamClosed(StreamingSession session) async {
+    connectionsCount -= 1;
+    sendStreamMessage(session, ConnectionChangeMessage(count: connectionsCount));
+    session.messages.postMessage(magnetChannel, ConnectionChangeMessage(count: connectionsCount), global: false);
   }
 
   @override

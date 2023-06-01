@@ -1,0 +1,6 @@
+
+
+class: ConnectionChangeMessage
+
+fields:
+  count: int
